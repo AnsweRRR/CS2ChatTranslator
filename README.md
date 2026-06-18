@@ -1,6 +1,6 @@
 # CS2 Chat Translator
 
-A real-time CS2 chat translation console application. Automatically translates all incoming chat messages into Hungarian (or any other language) using Google Translate.
+A real-time CS2 chat translation console and/or WPF application. Automatically translates all incoming chat messages into Hungarian (or any other language) using Google Translate.
 
 ## Prerequisites
 
