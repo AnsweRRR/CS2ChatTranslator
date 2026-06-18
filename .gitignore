@@ -35,6 +35,7 @@ coverage/
 coverage.*
 
 # NuGet packages and generated artifacts
+artifacts/
 *.nupkg
 *.snupkg
 packages/
