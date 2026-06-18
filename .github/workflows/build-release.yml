@@ -90,10 +90,36 @@ jobs:
           path: artifacts/CS2ChatTranslator.Overlay-win-x64.zip
           if-no-files-found: error
 
-      - name: Publish GitHub release
+      - name: Publish versioned GitHub release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: |
             artifacts/CS2ChatTranslator.Console-win-x64.zip
             artifacts/CS2ChatTranslator.Overlay-win-x64.zip
+
+      - name: Publish latest GitHub release
+        if: github.ref == 'refs/heads/main'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $releaseTag = "latest"
+          $releaseTitle = "Latest Windows Build"
+          $releaseNotes = "Automatic build from commit $env:GITHUB_SHA."
+          $assets = @(
+            "artifacts/CS2ChatTranslator.Console-win-x64.zip",
+            "artifacts/CS2ChatTranslator.Overlay-win-x64.zip"
+          )
+
+          git tag --force $releaseTag $env:GITHUB_SHA
+          git push --force origin $releaseTag
+
+          gh release view $releaseTag *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $releaseTag $assets --clobber
+            gh release edit $releaseTag --title $releaseTitle --notes $releaseNotes --latest
+          }
+          else {
+            gh release create $releaseTag $assets --title $releaseTitle --notes $releaseNotes --latest
+          }
