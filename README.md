@@ -1,67 +1,68 @@
 # CS2 Chat Translator
 
-Valós idejű CS2 chat fordító konzol alkalmazás. Az összes beérkező chat üzenetet automatikusan lefordítja magyarra (vagy bármely más nyelvre) a Google Translate segítségével.
+A real-time CS2 chat translation console application. Automatically translates all incoming chat messages into Hungarian (or any other language) using Google Translate.
 
-## Előfeltételek
+## Prerequisites
 
-- [.NET 8 SDK](https://dotnet.microsoft.com/download)
-- CS2 telepítve Steam-en
+* [.NET 8 SDK](https://dotnet.microsoft.com/download)
+* CS2 installed via Steam
 
-## CS2 beállítás (KÖTELEZŐ)
+## CS2 Setup (REQUIRED)
 
-A CS2-nek `-condebug` launch option-nel kell futnia, hogy log fájlba írja a konzolt.
+CS2 must be launched with the `-condebug` launch option so that it writes console output to a log file.
 
-1. Steam → Könyvtár → CS2 → Jobb klik → **Tulajdonságok**
-2. **Általános** fül → **Indítási paraméterek**
-3. Add hozzá: `-condebug`
+1. Steam → Library → CS2 → Right-click → **Properties**
+2. **General** tab → **Launch Options**
+3. Add: `-condebug`
 
-A log fájl helye:
-```
+The log file is located at:
+
+```text
 C:\Program Files (x86)\Steam\steamapps\common\Counter-Strike Global Offensive\game\csgo\console.log
 ```
 
-## Futtatás
+## Running the Application
 
 ```bash
-# Projekt build és futtatás
+# Build and run the project
 dotnet run
 
-# Egyedi log fájl útvonal megadása
+# Specify a custom log file path
 set CS2_LOG_PATH=D:\Steam\steamapps\common\Counter-Strike Global Offensive\game\csgo\console.log
 dotnet run
 
-# Más cél nyelv (pl. angol)
+# Use a different target language (e.g. English)
 set TARGET_LANG=en
 dotnet run
 
-# Google Translate API kulccsal (magasabb limit)
+# Use a Google Translate API key (higher limits)
 set GOOGLE_TRANSLATE_API_KEY=AIza...
 dotnet run
 ```
 
-## Konfiguráció (környezeti változók)
+## Configuration (Environment Variables)
 
-| Változó | Alapértelmezett | Leírás |
-|---|---|---|
-| `CS2_LOG_PATH` | Steam alapértelmezett útvonal | Console.log fájl helye |
-| `TARGET_LANG` | `hu` | Cél fordítási nyelv |
-| `GOOGLE_TRANSLATE_API_KEY` | üres (ingyenes endpoint) | Google API kulcs |
+| Variable                   | Default               | Description                      |
+| -------------------------- | --------------------- | -------------------------------- |
+| `CS2_LOG_PATH`             | Steam default path    | Location of the console.log file |
+| `TARGET_LANG`              | `hu`                  | Target translation language      |
+| `GOOGLE_TRANSLATE_API_KEY` | Empty (free endpoint) | Google API key                   |
 
-## Megjegyzések
+## Notes
 
-- **API kulcs nélkül** az ingyenes Google Translate endpoint-ot használja (~100 kérés/óra limit)
-- **API kulccsal** a hivatalos Google Cloud Translation API-t használja (500 karakter ingyenes, utána fizetős)
-- A program **csak olvas** – nem módosít semmit a CS2-ben, így VAC ban kockázat **nincs**
-- Csak az újonnan érkező üzeneteket fordítja, a régieket nem
+* **Without an API key**, the application uses the free Google Translate endpoint (~100 requests/hour limit)
+* **With an API key**, it uses the official Google Cloud Translation API (free quota available, then usage-based pricing applies)
+* The application is **read-only** – it does not modify anything in CS2, so there is **no VAC ban risk**
+* Only newly incoming chat messages are translated; existing messages are ignored
 
-## Hogyan néz ki?
+## Example Output
 
-```
+```text
 [14:23:01] [ALL] RussianPlayer: привет всем
-           └─ [RU→HU] sziasztok mindenki
+           └─ [RU→HU] hello everyone
 
 [14:23:15] [CT] GermanPlayer: nice shot!
-           (nem fordítja, már angol/felismert célnyelv)
+           (not translated, already in English / detected as target language)
 
 [14:23:30] [ALL] Player123: gg wp
 ```
