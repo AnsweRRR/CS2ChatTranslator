@@ -11,10 +11,10 @@ Both apps read CS2's `console.log` and translate incoming chat messages into Hun
 
 Download the latest Windows builds from the repository's **GitHub Releases** page:
 
-- `CS2ChatTranslator.Console-win-x64.zip`
-- `CS2ChatTranslator.Overlay-win-x64.zip`
+- `CS2ChatTranslator.Console-win-x64.exe`
+- `CS2ChatTranslator.Overlay-win-x64.exe`
 
-Extract the zip, edit `appsettings.json` if needed, then run the `.exe`.
+Download the `.exe` you want and run it. The release builds are self-contained, so .NET does not need to be installed on the target machine.
 
 ## Prerequisites
 
@@ -42,7 +42,7 @@ C:\Program Files (x86)\Steam\steamapps\common\Counter-Strike Global Offensive\ga
 
 ## Configuration
 
-Each app uses an `appsettings.json` file next to the executable.
+Each app can run without a config file by using the defaults below. To override them, place an `appsettings.json` file next to the executable.
 
 ```json
 {
@@ -66,10 +66,10 @@ Each app uses an `appsettings.json` file next to the executable.
 
 ## Running The Console App
 
-From a release zip:
+From a release:
 
 ```text
-CS2ChatTranslator.exe
+CS2ChatTranslator.Console-win-x64.exe
 ```
 
 From source:
@@ -82,10 +82,10 @@ The console app prints the original chat message and, when needed, the translate
 
 ## Running The WPF Overlay App
 
-From a release zip:
+From a release:
 
 ```text
-CS2ChatTranslator.Overlay.exe
+CS2ChatTranslator.Overlay-win-x64.exe
 ```
 
 From source:
@@ -120,8 +120,8 @@ dotnet build CS2ChatTranslator.slnx --configuration Release
 Publish self-contained Windows builds:
 
 ```bash
-dotnet publish CS2ChatTranslator.Console/CS2ChatTranslator.Console.csproj --configuration Release --runtime win-x64 --self-contained true
-dotnet publish CS2ChatTranslator.Overlay/CS2ChatTranslator.Overlay.csproj --configuration Release --runtime win-x64 --self-contained true
+dotnet publish CS2ChatTranslator.Console/CS2ChatTranslator.Console.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true
+dotnet publish CS2ChatTranslator.Overlay/CS2ChatTranslator.Overlay.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true
 ```
 
 ## Notes

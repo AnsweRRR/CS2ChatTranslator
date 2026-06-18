@@ -54,7 +54,9 @@ jobs:
           --runtime $env:RUNTIME_IDENTIFIER
           --self-contained true
           --output artifacts/publish/CS2ChatTranslator.Console
-          -p:PublishSingleFile=false
+          -p:PublishSingleFile=true
+          -p:EnableCompressionInSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
 
       - name: Publish WPF overlay app
         run: >
@@ -63,31 +65,28 @@ jobs:
           --runtime $env:RUNTIME_IDENTIFIER
           --self-contained true
           --output artifacts/publish/CS2ChatTranslator.Overlay
-          -p:PublishSingleFile=false
+          -p:PublishSingleFile=true
+          -p:EnableCompressionInSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
 
-      - name: Add default config files
+      - name: Stage release executables
         run: |
-          Copy-Item CS2ChatTranslator.Console/appsettings.example.json artifacts/publish/CS2ChatTranslator.Console/appsettings.json -Force
-          Copy-Item CS2ChatTranslator.Overlay/appsettings.example.json artifacts/publish/CS2ChatTranslator.Overlay/appsettings.json -Force
-
-      - name: Package console app
-        run: Compress-Archive -Path artifacts/publish/CS2ChatTranslator.Console/* -DestinationPath artifacts/CS2ChatTranslator.Console-win-x64.zip -Force
-
-      - name: Package WPF overlay app
-        run: Compress-Archive -Path artifacts/publish/CS2ChatTranslator.Overlay/* -DestinationPath artifacts/CS2ChatTranslator.Overlay-win-x64.zip -Force
+          New-Item -ItemType Directory -Path artifacts/release -Force
+          Copy-Item artifacts/publish/CS2ChatTranslator.Console/CS2ChatTranslator.exe artifacts/release/CS2ChatTranslator.Console-win-x64.exe -Force
+          Copy-Item artifacts/publish/CS2ChatTranslator.Overlay/CS2ChatTranslator.Overlay.exe artifacts/release/CS2ChatTranslator.Overlay-win-x64.exe -Force
 
       - name: Upload console artifact
         uses: actions/upload-artifact@v4
         with:
           name: CS2ChatTranslator.Console-win-x64
-          path: artifacts/CS2ChatTranslator.Console-win-x64.zip
+          path: artifacts/release/CS2ChatTranslator.Console-win-x64.exe
           if-no-files-found: error
 
       - name: Upload WPF overlay artifact
         uses: actions/upload-artifact@v4
         with:
           name: CS2ChatTranslator.Overlay-win-x64
-          path: artifacts/CS2ChatTranslator.Overlay-win-x64.zip
+          path: artifacts/release/CS2ChatTranslator.Overlay-win-x64.exe
           if-no-files-found: error
 
       - name: Publish versioned GitHub release
@@ -95,8 +94,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            artifacts/CS2ChatTranslator.Console-win-x64.zip
-            artifacts/CS2ChatTranslator.Overlay-win-x64.zip
+            artifacts/release/CS2ChatTranslator.Console-win-x64.exe
+            artifacts/release/CS2ChatTranslator.Overlay-win-x64.exe
 
       - name: Publish latest GitHub release
         if: github.ref == 'refs/heads/main'
@@ -108,8 +107,8 @@ jobs:
           $releaseTitle = "Latest Windows Build"
           $releaseNotes = "Automatic build from commit $env:GITHUB_SHA."
           $assets = @(
-            "artifacts/CS2ChatTranslator.Console-win-x64.zip",
-            "artifacts/CS2ChatTranslator.Overlay-win-x64.zip"
+            "artifacts/release/CS2ChatTranslator.Console-win-x64.exe",
+            "artifacts/release/CS2ChatTranslator.Overlay-win-x64.exe"
           )
 
           git tag --force $releaseTag $env:GITHUB_SHA
