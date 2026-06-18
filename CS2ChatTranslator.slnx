@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="CS2ChatTranslator.Common/CS2ChatTranslator.Common.csproj" />
+  <Project Path="CS2ChatTranslator.Console/CS2ChatTranslator.Console.csproj" />
+  <Project Path="CS2ChatTranslator.Overlay/CS2ChatTranslator.Overlay.csproj" />
+</Solution>

@@ -1,0 +1,55 @@
+# Build output
+bin/
+obj/
+
+# Visual Studio user state
+.vs/
+*.user
+*.rsuser
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Rider / JetBrains user state
+.idea/
+*.sln.iml
+
+# VS Code user state
+.vscode/
+
+# Local configuration and secrets
+appsettings.json
+appsettings.*.json
+!appsettings.example.json
+!appsettings.*.example.json
+
+# Runtime state
+overlay_position.json
+
+# Test results and coverage
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+coverage/
+coverage.*
+
+# NuGet packages and generated artifacts
+*.nupkg
+*.snupkg
+packages/
+project.lock.json
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+*.cache
+*.pid
+
+# OS files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
