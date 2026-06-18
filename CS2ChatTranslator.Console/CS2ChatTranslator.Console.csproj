@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 	<AssemblyName>CS2ChatTranslator</AssemblyName>
+    <ApplicationIcon>..\CS2ChatTranslator.Common\assets\app_logo.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>

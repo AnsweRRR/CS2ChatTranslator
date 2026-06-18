@@ -7,6 +7,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
 	<AssemblyName>CS2ChatTranslator.Overlay</AssemblyName>
+    <ApplicationIcon>..\CS2ChatTranslator.Common\assets\app_logo.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
