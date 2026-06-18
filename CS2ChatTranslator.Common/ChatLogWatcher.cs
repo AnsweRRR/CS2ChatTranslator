@@ -7,6 +7,7 @@ public class ChatLogWatcher : IDisposable
     private readonly Func<ChatMessage, Task> _onNewMessage;
     private readonly CancellationTokenSource _cts = new();
     private long _lastPosition;
+    private string? _lastMessageKey;
 
     private const int PollIntervalMs = 500;
 
@@ -64,7 +65,7 @@ public class ChatLogWatcher : IDisposable
                 while ((line = await reader.ReadLineAsync(ct)) != null)
                 {
                     var message = _parser.TryParse(line);
-                    if (message != null)
+                    if (message != null && !IsDuplicate(message))
                         await _onNewMessage(message);
                 }
 
@@ -83,6 +84,16 @@ public class ChatLogWatcher : IDisposable
                 Console.WriteLine($"[!] Hiba: {ex.Message}");
             }
         }
+    }
+
+    private bool IsDuplicate(ChatMessage message)
+    {
+        var messageKey = $"{message.Channel}\n{message.Player}\n{message.Message}";
+        if (string.Equals(_lastMessageKey, messageKey, StringComparison.Ordinal))
+            return true;
+
+        _lastMessageKey = messageKey;
+        return false;
     }
 
     public void Dispose()

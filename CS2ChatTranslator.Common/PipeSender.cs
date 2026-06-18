@@ -27,14 +27,14 @@ public class PipeSender : IDisposable
         }
     }
 
-    public async Task SendAsync(string player, string original, string? translated, string channel)
+    public async Task SendAsync(string player, string original, string? translated, string channel, string? sourceLanguage = null)
     {
         if (_writer == null || !(_pipe?.IsConnected ?? false))
             return;
 
         try
         {
-            var msg = new { Player = player, Original = original, Translated = translated, Channel = channel };
+            var msg = new { Player = player, Original = original, Translated = translated, Channel = channel, SourceLanguage = sourceLanguage };
             await _writer.WriteLineAsync(JsonSerializer.Serialize(msg));
         }
         catch

@@ -101,7 +101,7 @@ static async Task HandleNewMessage(
     SafeConsole.ResetColor();
 
     // Overlay küldés
-    await pipeSender.SendAsync(msg.Player, msg.Message, translated, msg.Channel);
+    await pipeSender.SendAsync(msg.Player, msg.Message, translated, msg.Channel, result.SourceLanguage);
 }
 
 static void PrintBanner()

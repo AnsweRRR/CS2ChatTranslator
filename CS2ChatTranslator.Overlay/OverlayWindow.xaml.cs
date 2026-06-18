@@ -34,6 +34,8 @@ public partial class OverlayWindow : Window
 
     // ─── Konstansok ─────────────────────────────────────────────────────────
     private const int MaxMessages = 6;
+    private const double MaxOverlayWidth = 480.0;
+    private const double MaxTextWidth = MaxOverlayWidth - 20.0;
     private const double MessageLifeSec = 8.0;
     private const double FadeOutSec = 1.0;
     private const string PositionFile = "overlay_position.json";
@@ -186,11 +188,11 @@ public partial class OverlayWindow : Window
         bool needsTranslation = ChatMessageParser.NeedsTranslation(result.SourceLanguage, _settings.Translator.TargetLanguage);
         string? translated = needsTranslation ? result.TranslatedText : null;
 
-        Dispatcher.Invoke(() => ShowMessage(msg, translated));
+        Dispatcher.Invoke(() => ShowMessage(msg, translated, needsTranslation ? result.SourceLanguage : null));
     }
 
     // ─── Üzenet megjelenítés ─────────────────────────────────────────────────
-    private void ShowMessage(ChatMessage msg, string? translated)
+    private void ShowMessage(ChatMessage msg, string? translated, string? sourceLanguage)
     {
         while (MessagePanel.Children.Count >= MaxMessages)
             MessagePanel.Children.RemoveAt(0);
@@ -201,11 +203,14 @@ public partial class OverlayWindow : Window
             CornerRadius = new CornerRadius(4),
             Padding = new Thickness(10, 6, 10, 6),
             Margin = new Thickness(0, 2, 0, 2),
+            MaxWidth = MaxOverlayWidth,
+            HorizontalAlignment = HorizontalAlignment.Left,
             Opacity = 0,
         };
 
         var stack = new StackPanel();
 
+        var chatBrush = GetChatBrush(msg.Channel);
         string channelHex = msg.Channel switch
         {
             var c when c.StartsWith("T") => "#FFD700",
@@ -213,7 +218,13 @@ public partial class OverlayWindow : Window
             _ => "#AAAAAA"
         };
 
-        var header = new TextBlock { FontFamily = new FontFamily("Consolas"), FontSize = 12 };
+        var header = new TextBlock
+        {
+            FontFamily = new FontFamily("Consolas"),
+            FontSize = 12,
+            MaxWidth = MaxTextWidth,
+            TextWrapping = TextWrapping.Wrap
+        };
         header.Inlines.Add(new System.Windows.Documents.Run($"[{msg.Channel}] ")
         { Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(channelHex)) });
         header.Inlines.Add(new System.Windows.Documents.Run(msg.Player)
@@ -223,9 +234,10 @@ public partial class OverlayWindow : Window
         stack.Children.Add(new TextBlock
         {
             Text = msg.Message,
-            Foreground = new SolidColorBrush(Color.FromRgb(200, 200, 200)),
+            Foreground = chatBrush,
             FontFamily = new FontFamily("Consolas"),
             FontSize = 12,
+            MaxWidth = MaxTextWidth,
             TextWrapping = TextWrapping.Wrap,
         });
 
@@ -233,10 +245,11 @@ public partial class OverlayWindow : Window
         {
             stack.Children.Add(new TextBlock
             {
-                Text = $"  → {translated}",
+                Text = $"  [{sourceLanguage?.ToUpperInvariant() ?? "?"}] -> {translated}",
                 Foreground = new SolidColorBrush(Color.FromRgb(100, 220, 100)),
                 FontFamily = new FontFamily("Consolas"),
                 FontSize = 12,
+                MaxWidth = MaxTextWidth,
                 FontStyle = FontStyles.Italic,
                 TextWrapping = TextWrapping.Wrap,
             });
@@ -256,6 +269,18 @@ public partial class OverlayWindow : Window
             };
             timer.Start();
         });
+    }
+
+    private static SolidColorBrush GetChatBrush(string channel)
+    {
+        var color = channel switch
+        {
+            var c when c.StartsWith("T", StringComparison.OrdinalIgnoreCase) => Color.FromRgb(255, 215, 0),
+            var c when c.StartsWith("CT", StringComparison.OrdinalIgnoreCase) => Color.FromRgb(0, 191, 255),
+            _ => Color.FromRgb(200, 200, 200)
+        };
+
+        return new SolidColorBrush(color);
     }
 
     private static void AnimateFade(UIElement el, double from, double to, double sec, Action? onComplete = null)

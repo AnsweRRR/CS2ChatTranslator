@@ -8,10 +8,10 @@
         Topmost="True"
         ShowInTaskbar="False"
         ResizeMode="NoResize"
-        Width="480"
-        SizeToContent="Height">
+        MaxWidth="480"
+        SizeToContent="WidthAndHeight">
 
-    <StackPanel>
+    <StackPanel MaxWidth="480">
 
         <!-- Drag mód sáv – csak drag módban látható -->
         <Border x:Name="DragHandle"
