@@ -8,50 +8,84 @@
         Topmost="True"
         ShowInTaskbar="False"
         ResizeMode="NoResize"
-        MaxWidth="480"
-        SizeToContent="WidthAndHeight">
+        SizeToContent="Height"
+        Width="640"
+        MinWidth="360"
+        MaxWidth="820"
+        SnapsToDevicePixels="True"
+        UseLayoutRounding="True">
 
-    <StackPanel MaxWidth="480">
+    <Window.Resources>
+        <DropShadowEffect x:Key="PanelShadow"
+                          BlurRadius="26"
+                          ShadowDepth="0"
+                          Opacity="0.55"
+                          Color="#000000"/>
+    </Window.Resources>
 
-        <!-- Drag mód sáv – csak drag módban látható -->
+    <StackPanel x:Name="OverlayRoot"
+                Width="640"
+                MaxWidth="820">
+
         <Border x:Name="DragHandle"
                 Visibility="Collapsed"
-                Background="#DD1a1a2e"
-                CornerRadius="4,4,0,0"
-                Padding="8,6"
+                Background="#D8F6F8FB"
+                BorderBrush="#88FFFFFF"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="12,9"
+                Margin="0,0,0,6"
                 Cursor="SizeAll"
-                MouseLeftButtonDown="DragBorder_MouseLeftButtonDown">
+                MouseLeftButtonDown="DragBorder_MouseLeftButtonDown"
+                Effect="{StaticResource PanelShadow}">
             <Grid>
-                <TextBlock Text="⠿  Húzd ide az áthelyezéshez"
-                           Foreground="#CCFFFFFF"
-                           FontSize="12"
-                           FontFamily="Consolas"
-                           HorizontalAlignment="Center"/>
-                <TextBlock Text="Ctrl+Shift+D = kilépés drag módból"
-                           Foreground="#88FFFFFF"
-                           FontSize="10"
-                           FontFamily="Consolas"
-                           HorizontalAlignment="Right"
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Orientation="Horizontal"
+                            Margin="0,0,12,0"
+                            VerticalAlignment="Center">
+                    <Ellipse Width="10" Height="10" Fill="#FFFF5F57" Margin="0,0,6,0"/>
+                    <Ellipse Width="10" Height="10" Fill="#FFFFBD2E" Margin="0,0,6,0"/>
+                    <Ellipse Width="10" Height="10" Fill="#FF28C840"/>
+                </StackPanel>
+
+                <TextBlock Grid.Column="1"
+                           Text="CS2 Chat Translator"
+                           Foreground="#E60B1220"
+                           FontSize="13"
+                           FontWeight="SemiBold"
+                           FontFamily="Segoe UI Variable Text, Segoe UI"
                            VerticalAlignment="Center"/>
+
+                <TextBlock Grid.Column="2"
+                           Text="Ctrl+Shift+D  move   Ctrl+Shift+Q  quit"
+                           Foreground="#990B1220"
+                           FontSize="12"
+                           FontFamily="SF Mono, Cascadia Mono, Consolas"
+                           VerticalAlignment="Center"
+                           Margin="0,0,10,0"/>
+
+                <Button Grid.Column="3"
+                        Width="26"
+                        Height="26"
+                        Padding="0"
+                        BorderThickness="0"
+                        Background="#1A0B1220"
+                        Foreground="#CC0B1220"
+                        FontSize="16"
+                        FontWeight="SemiBold"
+                        FontFamily="Segoe UI Variable Text, Segoe UI"
+                        Cursor="Hand"
+                        Click="CloseButton_Click"
+                        Content="×"/>
             </Grid>
         </Border>
 
-        <!-- Üzenetek -->
-        <StackPanel x:Name="MessagePanel" Margin="0,0,0,4"/>
-
-        <!-- Drag mód hint – csak normál módban, halványan -->
-        <Border x:Name="HintPanel"
-                Visibility="Collapsed"
-                Background="#661a1a2e"
-                CornerRadius="4"
-                Padding="6,3"
-                Margin="0,2,0,0">
-            <TextBlock Text="Ctrl+Shift+D = mozgatás"
-                       Foreground="#66FFFFFF"
-                       FontSize="10"
-                       FontFamily="Consolas"
-                       HorizontalAlignment="Center"/>
-        </Border>
-
+        <StackPanel x:Name="MessagePanel"/>
     </StackPanel>
 </Window>
