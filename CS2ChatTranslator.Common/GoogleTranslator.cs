@@ -20,7 +20,7 @@ public class GoogleTranslator
         _apiKey = apiKey ?? string.Empty;
     }
 
-    public async Task<TranslationResult> TranslateAsync(string text, string targetLanguage = "hu")
+    public async Task<TranslationResult> TranslateAsync(string text, string targetLanguage = "en")
     {
         if (string.IsNullOrWhiteSpace(text))
             return new TranslationResult(text, "unknown", targetLanguage);
