@@ -23,11 +23,12 @@ public class CS2Settings
 
 public class OverlaySettings
 {
-    public double Width { get; set; } = 640.0;
+    public double Width { get; set; } = 520.0;
     public double FontSize { get; set; } = 15.5;
-    public double HeaderFontSize { get; set; } = 13.0;
+    public double HeaderFontSize { get; set; } = 12.0;
     public int MaxMessages { get; set; } = 6;
+    public int ReplyHistoryMessages { get; set; } = 30;
     public double MessageLifeSeconds { get; set; } = 12.0;
     public double FadeOutSeconds { get; set; } = 1.0;
-    public double BackgroundOpacity { get; set; } = 0.84;
+    public double BackgroundOpacity { get; set; } = 0.96;
 }

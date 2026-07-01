@@ -9,83 +9,294 @@
         ShowInTaskbar="False"
         ResizeMode="NoResize"
         SizeToContent="Height"
-        Width="640"
-        MinWidth="360"
-        MaxWidth="820"
+        Width="520"
+        MinWidth="340"
+        MaxWidth="680"
         SnapsToDevicePixels="True"
-        UseLayoutRounding="True">
+        UseLayoutRounding="True"
+        PreviewKeyDown="Window_PreviewKeyDown"
+        PreviewMouseLeftButtonDown="Window_PreviewMouseLeftButtonDown">
 
     <Window.Resources>
-        <DropShadowEffect x:Key="PanelShadow"
-                          BlurRadius="26"
-                          ShadowDepth="0"
-                          Opacity="0.55"
+        <DropShadowEffect x:Key="OverlayShadow"
+                          BlurRadius="32"
+                          ShadowDepth="4"
+                          Direction="270"
+                          Opacity="0.52"
                           Color="#000000"/>
+
+        <Style x:Key="RoundIconButton" TargetType="Button">
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonSurface"
+                                Width="{TemplateBinding Width}"
+                                Height="{TemplateBinding Height}"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="24">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonSurface" Property="Opacity" Value="0.8"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonSurface" Property="Opacity" Value="0.58"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ButtonSurface" Property="Opacity" Value="0.32"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <StackPanel x:Name="OverlayRoot"
-                Width="640"
-                MaxWidth="820">
+                Width="520"
+                MaxWidth="680">
 
         <Border x:Name="DragHandle"
                 Visibility="Collapsed"
-                Background="#D8F6F8FB"
-                BorderBrush="#88FFFFFF"
+                Background="#F21C1C1E"
+                BorderBrush="#595A5A5F"
                 BorderThickness="1"
-                CornerRadius="8"
-                Padding="12,9"
-                Margin="0,0,0,6"
+                CornerRadius="22"
+                Padding="10,9"
+                Margin="0,0,0,8"
                 Cursor="SizeAll"
-                MouseLeftButtonDown="DragBorder_MouseLeftButtonDown"
-                Effect="{StaticResource PanelShadow}">
+                Effect="{StaticResource OverlayShadow}">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <StackPanel Orientation="Horizontal"
-                            Margin="0,0,12,0"
-                            VerticalAlignment="Center">
-                    <Ellipse Width="10" Height="10" Fill="#FFFF5F57" Margin="0,0,6,0"/>
-                    <Ellipse Width="10" Height="10" Fill="#FFFFBD2E" Margin="0,0,6,0"/>
-                    <Ellipse Width="10" Height="10" Fill="#FF28C840"/>
-                </StackPanel>
+                <Grid Width="18" Height="22" Margin="2,0,10,0" VerticalAlignment="Center">
+                    <Ellipse Width="3" Height="3" Fill="#99EBEBF5" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="3,4,0,0"/>
+                    <Ellipse Width="3" Height="3" Fill="#99EBEBF5" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,3,0"/>
+                    <Ellipse Width="3" Height="3" Fill="#99EBEBF5" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="3,0,0,0"/>
+                    <Ellipse Width="3" Height="3" Fill="#99EBEBF5" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,3,0"/>
+                    <Ellipse Width="3" Height="3" Fill="#99EBEBF5" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="3,0,0,4"/>
+                    <Ellipse Width="3" Height="3" Fill="#99EBEBF5" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,3,4"/>
+                </Grid>
 
                 <TextBlock Grid.Column="1"
-                           Text="CS2 Chat Translator"
-                           Foreground="#E60B1220"
+                           Text="Move Overlay"
+                           Foreground="#FFF5F5F7"
                            FontSize="13"
                            FontWeight="SemiBold"
                            FontFamily="Segoe UI Variable Text, Segoe UI"
                            VerticalAlignment="Center"/>
 
-                <TextBlock Grid.Column="2"
-                           Text="Ctrl+Shift+D  move   Ctrl+Shift+Q  quit"
-                           Foreground="#990B1220"
-                           FontSize="12"
-                           FontFamily="SF Mono, Cascadia Mono, Consolas"
-                           VerticalAlignment="Center"
-                           Margin="0,0,10,0"/>
+                <Button Grid.Column="2"
+                        Width="30"
+                        Height="30"
+                        Margin="5,0,0,0"
+                        Background="#FF3A3A3C"
+                        FontSize="17"
+                        Style="{StaticResource RoundIconButton}"
+                        ToolTip="Reset position"
+                        Click="ResetPosition_Click"
+                        Content="&#x2316;"/>
 
                 <Button Grid.Column="3"
-                        Width="26"
-                        Height="26"
-                        Padding="0"
-                        BorderThickness="0"
-                        Background="#1A0B1220"
-                        Foreground="#CC0B1220"
+                        Width="30"
+                        Height="30"
+                        Margin="7,0,0,0"
+                        Background="#FF0A84FF"
                         FontSize="16"
                         FontWeight="SemiBold"
-                        FontFamily="Segoe UI Variable Text, Segoe UI"
-                        Cursor="Hand"
+                        Style="{StaticResource RoundIconButton}"
+                        ToolTip="Done"
+                        Click="DoneMoving_Click"
+                        Content="&#x2713;"/>
+
+                <Button Grid.Column="4"
+                        Width="30"
+                        Height="30"
+                        Margin="7,0,0,0"
+                        Background="#FF3A3A3C"
+                        FontSize="17"
+                        Style="{StaticResource RoundIconButton}"
+                        ToolTip="Close"
                         Click="CloseButton_Click"
-                        Content="×"/>
+                        Content="&#x00D7;"/>
             </Grid>
         </Border>
 
-        <StackPanel x:Name="MessagePanel"/>
+        <Border x:Name="ConversationSurface"
+                Background="Transparent"
+                BorderBrush="Transparent"
+                BorderThickness="0"
+                CornerRadius="24"
+                Padding="0">
+            <StackPanel>
+                <Grid x:Name="ReplyHeader"
+                      Visibility="Collapsed"
+                      Margin="2,0,2,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Border Width="36"
+                            Height="36"
+                            Background="#FF0A84FF"
+                            CornerRadius="18"
+                            VerticalAlignment="Center">
+                        <TextBlock Text="&#x2026;"
+                                   Foreground="White"
+                                   FontSize="23"
+                                   FontWeight="SemiBold"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Margin="0,-7,0,0"/>
+                    </Border>
+
+                    <StackPanel Grid.Column="1"
+                                Margin="10,0,0,0"
+                                VerticalAlignment="Center">
+                        <TextBlock Text="CS2 Chat Translator"
+                                   Foreground="#FFF5F5F7"
+                                   FontFamily="Segoe UI Variable Text, Segoe UI"
+                                   FontSize="15"
+                                   FontWeight="SemiBold"/>
+                        <TextBlock x:Name="HistoryCountText"
+                                   Text="Recent translations"
+                                   Foreground="#8FEBEBF5"
+                                   FontFamily="Segoe UI Variable Text, Segoe UI"
+                                   FontSize="11"
+                                   Margin="0,1,0,0"/>
+                    </StackPanel>
+
+                    <Button Grid.Column="2"
+                            Width="30"
+                            Height="30"
+                            Background="#FF3A3A3C"
+                            FontSize="17"
+                            Style="{StaticResource RoundIconButton}"
+                            ToolTip="Close reply mode"
+                            Click="CancelReply_Click"
+                            Content="&#x00D7;"/>
+                </Grid>
+
+                <Border x:Name="HeaderDivider"
+                        Visibility="Collapsed"
+                        Height="1"
+                        Background="#26FFFFFF"
+                        Margin="0,0,0,10"/>
+
+                <ScrollViewer x:Name="MessageScrollViewer"
+                              MaxHeight="420"
+                              HorizontalScrollBarVisibility="Disabled"
+                              VerticalScrollBarVisibility="Hidden"
+                              PanningMode="VerticalOnly">
+                    <StackPanel x:Name="MessagePanel"/>
+                </ScrollViewer>
+
+                <Border x:Name="ReplyPanel"
+                        Visibility="Collapsed"
+                        Margin="0,10,0,0">
+                    <StackPanel>
+                        <Grid Margin="5,0,5,9">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Border Width="3"
+                                    Height="34"
+                                    Background="#FF0A84FF"
+                                    CornerRadius="2"
+                                    Margin="0,0,9,0"/>
+
+                            <StackPanel Grid.Column="1">
+                                <TextBlock x:Name="ReplyingToText"
+                                           Text="Select a message"
+                                           Foreground="#FFF5F5F7"
+                                           FontFamily="Segoe UI Variable Text, Segoe UI"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"/>
+                                <TextBlock x:Name="ReplyPreviewText"
+                                           Text="Choose the translation you want to reply to"
+                                           Foreground="#8FEBEBF5"
+                                           FontFamily="Segoe UI Variable Text, Segoe UI"
+                                           FontSize="11"
+                                           TextTrimming="CharacterEllipsis"
+                                           MaxWidth="420"
+                                           Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Border Background="#FF2C2C2E"
+                                BorderBrush="#FF545458"
+                                BorderThickness="1"
+                                CornerRadius="22"
+                                Padding="15,5,5,5">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Grid VerticalAlignment="Center">
+                                    <TextBlock x:Name="ReplyPlaceholder"
+                                               Text="Message"
+                                               Foreground="#78EBEBF5"
+                                               FontFamily="Segoe UI Variable Text, Segoe UI"
+                                               FontSize="15"
+                                               IsHitTestVisible="False"
+                                               VerticalAlignment="Center"/>
+                                    <TextBox x:Name="ReplyTextBox"
+                                             Background="Transparent"
+                                             BorderThickness="0"
+                                             Foreground="#FFF5F5F7"
+                                             CaretBrush="#FF0A84FF"
+                                             FontFamily="Segoe UI Variable Text, Segoe UI"
+                                             FontSize="15"
+                                             Padding="0"
+                                             VerticalContentAlignment="Center"
+                                             TextChanged="ReplyTextBox_TextChanged"
+                                             PreviewKeyDown="ReplyTextBox_PreviewKeyDown"/>
+                                </Grid>
+
+                                <Button x:Name="SendButton"
+                                        Grid.Column="1"
+                                        Width="32"
+                                        Height="32"
+                                        Margin="8,0,0,0"
+                                        Background="#FF0A84FF"
+                                        FontSize="21"
+                                        FontWeight="Bold"
+                                        Style="{StaticResource RoundIconButton}"
+                                        ToolTip="Translate and copy"
+                                        Click="SendButton_Click"
+                                        Content="&#x2191;"/>
+                            </Grid>
+                        </Border>
+
+                        <TextBlock x:Name="ReplyStatusText"
+                                   Visibility="Collapsed"
+                                   Foreground="#FF64D2FF"
+                                   FontFamily="Segoe UI Variable Text, Segoe UI"
+                                   FontSize="11"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,7,0,0"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </Border>
     </StackPanel>
 </Window>
