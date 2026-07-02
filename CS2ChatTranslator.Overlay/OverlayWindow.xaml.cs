@@ -11,6 +11,15 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
 using System.Windows.Threading;
+using Brushes = System.Windows.Media.Brushes;
+using Button = System.Windows.Controls.Button;
+using Clipboard = System.Windows.Clipboard;
+using Color = System.Windows.Media.Color;
+using Cursors = System.Windows.Input.Cursors;
+using FontFamily = System.Windows.Media.FontFamily;
+using HorizontalAlignment = System.Windows.HorizontalAlignment;
+using KeyEventArgs = System.Windows.Input.KeyEventArgs;
+using WindowState = System.Windows.WindowState;
 
 namespace CS2ChatTranslator.Overlay;
 
@@ -19,11 +28,17 @@ public partial class OverlayWindow : Window
     private const int GWL_EXSTYLE = -20;
     private const int WS_EX_TRANSPARENT = 0x00000020;
     private const int WS_EX_LAYERED = 0x00080000;
+    private const uint SWP_NOSIZE = 0x0001;
+    private const uint SWP_NOMOVE = 0x0002;
+    private const uint SWP_NOZORDER = 0x0004;
+    private const uint SWP_NOACTIVATE = 0x0010;
+    private const uint SWP_FRAMECHANGED = 0x0020;
 
     private const int DRAG_HOTKEY_ID = 9000;
     private const int CLOSE_HOTKEY_ID = 9001;
     private const int REPLY_HOTKEY_ID = 9002;
     private const int CANCEL_HOTKEY_ID = 9003;
+    private const int HISTORY_HOTKEY_ID = 9004;
     private const int MOVE_LEFT_HOTKEY_ID = 9010;
     private const int MOVE_UP_HOTKEY_ID = 9011;
     private const int MOVE_RIGHT_HOTKEY_ID = 9012;
@@ -33,6 +48,7 @@ public partial class OverlayWindow : Window
     private const int VK_D = 0x44;
     private const int VK_Q = 0x51;
     private const int VK_R = 0x52;
+    private const int VK_H = 0x48;
     private const int VK_ESCAPE = 0x1B;
     private const int VK_LEFT = 0x25;
     private const int VK_UP = 0x26;
@@ -49,6 +65,16 @@ public partial class OverlayWindow : Window
     private static extern int SetWindowLong(IntPtr hwnd, int index, int newStyle);
 
     [DllImport("user32.dll")]
+    private static extern bool SetWindowPos(
+        IntPtr hwnd,
+        IntPtr hwndInsertAfter,
+        int x,
+        int y,
+        int width,
+        int height,
+        uint flags);
+
+    [DllImport("user32.dll")]
     private static extern bool RegisterHotKey(IntPtr hWnd, int id, int fsModifiers, int vk);
 
     [DllImport("user32.dll")]
@@ -63,15 +89,22 @@ public partial class OverlayWindow : Window
     private readonly AppSettings _settings;
     private readonly GoogleTranslator _translator;
     private readonly ChatMessageParser _parser;
+    private readonly HistoryPreferencesStore _preferencesStore;
+    private readonly ChatHistoryStore _historyStore;
     private readonly List<MessageBubble> _messages = [];
     private ChatLogWatcher? _watcher;
     private HwndSource? _hwndSource;
+    private System.Windows.Forms.NotifyIcon? _trayIcon;
+    private System.Windows.Forms.ToolStripMenuItem? _translationStatusItem;
+    private HistoryWindow? _historyWindow;
+    private HistoryPreferences _historyPreferences;
     private MessageBubble? _selectedMessage;
     private IntPtr _previousForegroundWindow;
     private double? _normalTopBeforeReply;
     private bool _dragMode;
     private bool _replyMode;
     private bool _isSending;
+    private bool _isPaused;
 
     private double OverlayWidth => Clamp(_settings.Overlay.Width, 340.0, 680.0);
     private double BubbleMaxWidth => Math.Max(250.0, OverlayWidth * 0.78);
@@ -99,6 +132,11 @@ public partial class OverlayWindow : Window
                 ? null
                 : _settings.Translator.GoogleApiKey);
         _parser = new ChatMessageParser();
+        _preferencesStore = new HistoryPreferencesStore();
+        _historyPreferences = _preferencesStore.Load(
+            _settings.History.Enabled,
+            _settings.History.RetentionDays);
+        _historyStore = new ChatHistoryStore(_historyPreferences.RetentionDays);
 
         ApplyOverlaySettings();
         LoadPosition();
@@ -116,12 +154,24 @@ public partial class OverlayWindow : Window
         UpdateHistoryCount();
     }
 
-    private void OnLoaded(object sender, RoutedEventArgs e)
+    private async void OnLoaded(object sender, RoutedEventArgs e)
     {
         EnableClickThrough();
         RegisterHotkeys();
+        try
+        {
+            await _historyStore.InitializeAsync();
+            if (_historyPreferences.Enabled)
+                await LoadPersistedReplyHistoryAsync();
+        }
+        catch
+        {
+        }
+        InitializeTrayIcon();
 
-        _watcher = new ChatLogWatcher(_settings.CS2.LogPath, _parser, OnNewMessage);
+        var logPath = CS2LogPathResolver.Resolve(_settings.CS2.LogPath);
+        UpdateTranslationStatus(logPath);
+        _watcher = new ChatLogWatcher(logPath, _parser, OnNewMessage);
         _watcher.Start();
     }
 
@@ -132,6 +182,7 @@ public partial class OverlayWindow : Window
             UnregisterHotKey(_hwndSource.Handle, DRAG_HOTKEY_ID);
             UnregisterHotKey(_hwndSource.Handle, CLOSE_HOTKEY_ID);
             UnregisterHotKey(_hwndSource.Handle, REPLY_HOTKEY_ID);
+            UnregisterHotKey(_hwndSource.Handle, HISTORY_HOTKEY_ID);
             UnregisterInteractionHotkeys();
             _hwndSource.Dispose();
         }
@@ -139,8 +190,150 @@ public partial class OverlayWindow : Window
         foreach (var message in _messages)
             message.LifetimeTimer.Stop();
 
+        _historyWindow?.Close();
+        if (_trayIcon != null)
+        {
+            _trayIcon.Visible = false;
+            _trayIcon.Dispose();
+        }
+
         _watcher?.Dispose();
+        _historyStore.Dispose();
         _translator.Dispose();
+    }
+
+    private async Task LoadPersistedReplyHistoryAsync()
+    {
+        var records = await _historyStore.GetRecentTranslatedMessagesAsync(ReplyHistoryMessages);
+        foreach (var record in records)
+        {
+            if (string.IsNullOrWhiteSpace(record.TranslatedText))
+                continue;
+
+            var message = new ChatMessage(
+                record.Player,
+                record.OriginalText,
+                record.Channel,
+                record.Timestamp.ToLocalTime().DateTime);
+            ShowTranslation(
+                message,
+                record.TranslatedText,
+                record.SourceLanguage,
+                record.Id,
+                record.Timestamp.UtcDateTime,
+                displayNormally: false);
+        }
+    }
+
+    private void InitializeTrayIcon()
+    {
+        var menu = new System.Windows.Forms.ContextMenuStrip();
+        _translationStatusItem = new System.Windows.Forms.ToolStripMenuItem("Translation: Starting...")
+        {
+            Enabled = false
+        };
+        menu.Items.Add(_translationStatusItem);
+        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
+        menu.Items.Add("Reply to Message", null, (_, _) =>
+            Dispatcher.BeginInvoke(() =>
+            {
+                if (!_replyMode)
+                    EnterReplyMode();
+            }));
+        menu.Items.Add("Open Chat History", null, (_, _) =>
+            Dispatcher.BeginInvoke(OpenHistoryWindow));
+        menu.Items.Add("Settings", null, (_, _) =>
+            Dispatcher.BeginInvoke(OpenSettingsWindow));
+        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
+
+        var pauseItem = new System.Windows.Forms.ToolStripMenuItem("Pause Translation")
+        {
+            CheckOnClick = true
+        };
+        pauseItem.CheckedChanged += (_, _) => _isPaused = pauseItem.Checked;
+        menu.Items.Add(pauseItem);
+        menu.Items.Add("Move Overlay", null, (_, _) =>
+            Dispatcher.BeginInvoke(() =>
+            {
+                if (!_dragMode)
+                    ToggleDragMode();
+            }));
+        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
+        menu.Items.Add("Exit", null, (_, _) => Dispatcher.BeginInvoke(() => Close()));
+
+        _trayIcon = new System.Windows.Forms.NotifyIcon
+        {
+            Text = "CS2 Chat Translator",
+            Icon = System.Drawing.Icon.ExtractAssociatedIcon(Environment.ProcessPath!),
+            ContextMenuStrip = menu,
+            Visible = true
+        };
+        _trayIcon.DoubleClick += (_, _) => Dispatcher.BeginInvoke(OpenHistoryWindow);
+    }
+
+    private void UpdateTranslationStatus(string logPath)
+    {
+        var isReady = File.Exists(logPath);
+        if (_translationStatusItem != null)
+        {
+            _translationStatusItem.Text = isReady
+                ? "Translation: Watching CS2 chat"
+                : "Translation: console.log not found";
+        }
+
+        if (!isReady && _trayIcon != null)
+        {
+            _trayIcon.BalloonTipTitle = "CS2 Chat Translator";
+            _trayIcon.BalloonTipText =
+                "CS2 console.log was not found. Start CS2 with the -condebug launch option.";
+            _trayIcon.ShowBalloonTip(6000);
+        }
+    }
+
+    private async void OpenSettingsWindow()
+    {
+        var window = new HistorySettingsWindow(_historyPreferences, _historyStore.DatabasePath);
+        if (_historyWindow is { IsVisible: true })
+            window.Owner = _historyWindow;
+
+        if (window.ShowDialog() != true)
+            return;
+
+        var wasEnabled = _historyPreferences.Enabled;
+        _historyPreferences = window.Preferences.Normalize();
+        _preferencesStore.Save(_historyPreferences);
+        _historyStore.RetentionDays = _historyPreferences.RetentionDays;
+        await _historyStore.PruneAsync();
+
+        if (!wasEnabled && _historyPreferences.Enabled && _messages.Count == 0)
+            await LoadPersistedReplyHistoryAsync();
+    }
+
+    private void OpenHistoryWindow()
+    {
+        if (_historyWindow == null)
+        {
+            _historyWindow = new HistoryWindow(_historyStore, _translator, OpenSettingsWindow);
+            _historyWindow.Closed += (_, _) => _historyWindow = null;
+            _historyWindow.Show();
+        }
+        else
+        {
+            if (_historyWindow.WindowState == WindowState.Minimized)
+                _historyWindow.WindowState = WindowState.Normal;
+            _historyWindow.Show();
+            _historyWindow.Activate();
+            _ = _historyWindow.RefreshAllAsync();
+        }
+    }
+
+    private Task RefreshOpenHistoryWindowAsync()
+    {
+        var historyWindow = _historyWindow;
+        if (historyWindow is not { IsVisible: true })
+            return Task.CompletedTask;
+
+        return Dispatcher.InvokeAsync(historyWindow.RefreshAllAsync).Task.Unwrap();
     }
 
     private void RegisterHotkeys()
@@ -150,6 +343,7 @@ public partial class OverlayWindow : Window
         RegisterHotKey(_hwndSource.Handle, DRAG_HOTKEY_ID, MOD_CONTROL | MOD_SHIFT, VK_D);
         RegisterHotKey(_hwndSource.Handle, CLOSE_HOTKEY_ID, MOD_CONTROL | MOD_SHIFT, VK_Q);
         RegisterHotKey(_hwndSource.Handle, REPLY_HOTKEY_ID, MOD_CONTROL | MOD_SHIFT, VK_R);
+        RegisterHotKey(_hwndSource.Handle, HISTORY_HOTKEY_ID, MOD_CONTROL | MOD_SHIFT, VK_H);
     }
 
     private void RegisterInteractionHotkeys(bool includeMovement)
@@ -201,6 +395,10 @@ public partial class OverlayWindow : Window
                 ToggleReplyMode();
                 handled = true;
                 break;
+            case HISTORY_HOTKEY_ID:
+                OpenHistoryWindow();
+                handled = true;
+                break;
             case CANCEL_HOTKEY_ID:
                 ExitInteractiveMode();
                 handled = true;
@@ -228,20 +426,52 @@ public partial class OverlayWindow : Window
 
     private async Task OnNewMessage(ChatMessage msg)
     {
+        if (_isPaused)
+            return;
+
         if (!string.IsNullOrEmpty(_settings.CS2.PlayerName)
             && msg.Player.Equals(_settings.CS2.PlayerName, StringComparison.OrdinalIgnoreCase))
             return;
 
         var result = await _translator.TranslateAsync(msg.Message, _settings.Translator.TargetLanguage);
-        if (!ChatMessageParser.NeedsTranslation(result.SourceLanguage, _settings.Translator.TargetLanguage)
-            || string.IsNullOrWhiteSpace(result.TranslatedText))
+        var needsTranslation = ChatMessageParser.NeedsTranslation(
+            result.SourceLanguage,
+            _settings.Translator.TargetLanguage);
+        var translatedText = needsTranslation && !string.IsNullOrWhiteSpace(result.TranslatedText)
+            ? result.TranslatedText
+            : null;
+
+        long historyId = 0;
+        if (_historyPreferences.Enabled)
+        {
+            try
+            {
+                historyId = await _historyStore.AddMessageAsync(
+                    msg,
+                    translatedText,
+                    result.SourceLanguage,
+                    _settings.Translator.TargetLanguage);
+            }
+            catch
+            {
+            }
+        }
+
+        await RefreshOpenHistoryWindowAsync();
+        if (translatedText == null)
             return;
 
         await Dispatcher.InvokeAsync(() =>
-            ShowTranslation(msg, result.TranslatedText, result.SourceLanguage));
+            ShowTranslation(msg, translatedText, result.SourceLanguage, historyId));
     }
 
-    private void ShowTranslation(ChatMessage msg, string translation, string sourceLanguage)
+    private void ShowTranslation(
+        ChatMessage msg,
+        string translation,
+        string sourceLanguage,
+        long historyId = 0,
+        DateTime? receivedAtUtc = null,
+        bool displayNormally = true)
     {
         while (_messages.Count >= ReplyHistoryMessages)
         {
@@ -251,9 +481,17 @@ public partial class OverlayWindow : Window
 
         var (container, bubble) = BuildMessageVisual(msg, translation);
         var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(MessageLifeSec) };
-        var item = new MessageBubble(msg, translation, sourceLanguage, container, bubble, timer);
+        var item = new MessageBubble(
+            msg,
+            translation,
+            sourceLanguage,
+            historyId,
+            receivedAtUtc ?? DateTime.UtcNow,
+            container,
+            bubble,
+            timer);
 
-        bubble.MouseLeftButtonDown += (_, e) =>
+        container.MouseLeftButtonDown += (_, e) =>
         {
             if (!_replyMode)
                 return;
@@ -273,6 +511,9 @@ public partial class OverlayWindow : Window
 
         _messages.Add(item);
         UpdateHistoryCount();
+        if (!displayNormally)
+            return;
+
         if (_replyMode)
         {
             ShowMessageInPanel(item);
@@ -459,7 +700,7 @@ public partial class OverlayWindow : Window
         foreach (var message in _messages)
         {
             message.LifetimeTimer.Stop();
-            message.Bubble.Cursor = Cursors.Hand;
+            message.Container.Cursor = Cursors.Hand;
             ShowMessageInPanel(message);
         }
 
@@ -509,7 +750,7 @@ public partial class OverlayWindow : Window
 
         foreach (var message in _messages)
         {
-            message.Bubble.Cursor = Cursors.Arrow;
+            message.Container.Cursor = Cursors.Arrow;
             message.IsDisplayed = false;
             message.IsRemoving = false;
         }
@@ -605,6 +846,18 @@ public partial class OverlayWindow : Window
             ReplyStatusText.Foreground = new SolidColorBrush(Color.FromRgb(255, 69, 58));
             UpdateSendButton();
             return;
+        }
+
+        if (_historyPreferences.Enabled && selected.HistoryId > 0)
+        {
+            try
+            {
+                await _historyStore.SaveReplyAsync(selected.HistoryId, reply, result.TranslatedText);
+                await RefreshOpenHistoryWindowAsync();
+            }
+            catch
+            {
+            }
         }
 
         ReplyStatusText.Text = "Copied to clipboard";
@@ -850,6 +1103,7 @@ public partial class OverlayWindow : Window
         var hwnd = new WindowInteropHelper(this).Handle;
         var style = GetWindowLong(hwnd, GWL_EXSTYLE);
         SetWindowLong(hwnd, GWL_EXSTYLE, style | WS_EX_TRANSPARENT | WS_EX_LAYERED);
+        RefreshWindowStyle(hwnd);
     }
 
     private void DisableClickThrough()
@@ -857,6 +1111,19 @@ public partial class OverlayWindow : Window
         var hwnd = new WindowInteropHelper(this).Handle;
         var style = GetWindowLong(hwnd, GWL_EXSTYLE);
         SetWindowLong(hwnd, GWL_EXSTYLE, (style | WS_EX_LAYERED) & ~WS_EX_TRANSPARENT);
+        RefreshWindowStyle(hwnd);
+    }
+
+    private static void RefreshWindowStyle(IntPtr hwnd)
+    {
+        SetWindowPos(
+            hwnd,
+            IntPtr.Zero,
+            0,
+            0,
+            0,
+            0,
+            SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
     }
 
     private void LoadPosition()
@@ -1019,6 +1286,8 @@ public partial class OverlayWindow : Window
         ChatMessage message,
         string translation,
         string sourceLanguage,
+        long historyId,
+        DateTime receivedAtUtc,
         FrameworkElement container,
         Border bubble,
         DispatcherTimer lifetimeTimer)
@@ -1026,10 +1295,11 @@ public partial class OverlayWindow : Window
         public ChatMessage Message { get; } = message;
         public string Translation { get; } = translation;
         public string SourceLanguage { get; } = sourceLanguage;
+        public long HistoryId { get; } = historyId;
         public FrameworkElement Container { get; } = container;
         public Border Bubble { get; } = bubble;
         public DispatcherTimer LifetimeTimer { get; } = lifetimeTimer;
-        public DateTime ReceivedAtUtc { get; } = DateTime.UtcNow;
+        public DateTime ReceivedAtUtc { get; } = receivedAtUtc;
         public bool IsDisplayed { get; set; }
         public bool IsRemoving { get; set; }
     }
