@@ -63,6 +63,10 @@ Each app can run without a config file by using the defaults below. To override 
     "MessageLifeSeconds": 12,
     "FadeOutSeconds": 1,
     "BackgroundOpacity": 0.96
+  },
+  "History": {
+    "Enabled": true,
+    "RetentionDays": 30
   }
 }
 ```
@@ -81,6 +85,8 @@ Each app can run without a config file by using the defaults below. To override 
 | `Overlay.MessageLifeSeconds` | `12` | Time before a message starts fading |
 | `Overlay.FadeOutSeconds` | `1` | Fade-out animation duration |
 | `Overlay.BackgroundOpacity` | `0.96` | Message bubble opacity, from `0.55` to `1.0` |
+| `History.Enabled` | `true` | Store parsed chat messages in the local history database |
+| `History.RetentionDays` | `30` | Delete non-favorite messages after this many days; use `0` for unlimited retention |
 
 ## Running The Console App
 
@@ -121,6 +127,7 @@ Useful overlay controls:
 - Use the position button in the move bar to restore the new lower-middle default position, then click the blue checkmark to finish.
 - Press `Esc` or `Ctrl+Shift+D` again to leave drag mode.
 - Press `Ctrl+Shift+R` to enter reply mode. The last 30 translations open as a scrollable history.
+- Press `Ctrl+Shift+H` to open the complete local chat history.
 - The newest translation is selected automatically; use the mouse wheel and click another bubble to reply to an older message.
 - Use `Ctrl+Up` and `Ctrl+Down` to move between messages without leaving the composer.
 - Type a reply and press `Enter`, or click the blue send button. The reply is translated to the selected message's detected language and copied to the clipboard.
@@ -128,6 +135,8 @@ Useful overlay controls:
 - Press `Ctrl+Shift+Q` to close the overlay.
 - In drag mode, click the `x` button on the top bar to close the overlay.
 - The overlay position is saved to `overlay_position.json` next to the executable.
+
+The notification area icon provides quick access to chat history, settings, translation pause, overlay movement, and application exit.
 
 Overlay display behavior:
 
@@ -137,6 +146,26 @@ Overlay display behavior:
 - Messages fade out after about 12 seconds by default.
 - Faded messages remain available in the reply history.
 - Messages already written in the target language are not duplicated in the overlay.
+
+## Local Chat History
+
+The overlay stores parsed chat messages in a local SQLite database when history is enabled. The database is located at:
+
+```text
+%LocalAppData%\CS2ChatTranslator\chat-history.db
+```
+
+The history window provides:
+
+- Session, player, message, channel, and language filtering.
+- Original messages, translations, and translated replies.
+- Persistent favorites that are excluded from automatic retention cleanup.
+- Reply translation and clipboard copy for previously stored messages.
+- Export of the current filtered view as JSON, CSV, or plain text.
+- Individual message deletion and complete local history deletion.
+- Configurable retention of 7, 30, 90, or 365 days, or unlimited retention.
+
+All history data remains on the local computer. Settings are stored in `%LocalAppData%\CS2ChatTranslator\preferences.json`.
 
 ## Building From Source
 
@@ -157,6 +186,7 @@ dotnet publish CS2ChatTranslator.Overlay/CS2ChatTranslator.Overlay.csproj --conf
 - Without an API key, the app uses the free Google Translate endpoint and may be rate-limited.
 - With an API key, it uses the official Google Cloud Translation API.
 - The app reads CS2's log file and writes translated replies to the Windows clipboard. It does not modify CS2 files or interact with the game process.
+- Local history can be disabled at any time from the notification area settings window.
 - Only newly incoming chat messages are translated; old messages already present in the log are ignored.
 - If nothing appears, check that CS2 was started with `-condebug` and that `CS2.LogPath` points to the correct `console.log`.
 

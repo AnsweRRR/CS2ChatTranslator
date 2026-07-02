@@ -5,6 +5,7 @@ public class AppSettings
     public TranslatorSettings Translator { get; set; } = new();
     public CS2Settings CS2 { get; set; } = new();
     public OverlaySettings Overlay { get; set; } = new();
+    public HistorySettings History { get; set; } = new();
 }
 
 public class TranslatorSettings
@@ -31,4 +32,10 @@ public class OverlaySettings
     public double MessageLifeSeconds { get; set; } = 12.0;
     public double FadeOutSeconds { get; set; } = 1.0;
     public double BackgroundOpacity { get; set; } = 0.96;
+}
+
+public class HistorySettings
+{
+    public bool Enabled { get; set; } = true;
+    public int RetentionDays { get; set; } = 30;
 }
