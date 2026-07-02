@@ -28,6 +28,11 @@ public partial class OverlayWindow : Window
     private const int GWL_EXSTYLE = -20;
     private const int WS_EX_TRANSPARENT = 0x00000020;
     private const int WS_EX_LAYERED = 0x00080000;
+    private const uint SWP_NOSIZE = 0x0001;
+    private const uint SWP_NOMOVE = 0x0002;
+    private const uint SWP_NOZORDER = 0x0004;
+    private const uint SWP_NOACTIVATE = 0x0010;
+    private const uint SWP_FRAMECHANGED = 0x0020;
 
     private const int DRAG_HOTKEY_ID = 9000;
     private const int CLOSE_HOTKEY_ID = 9001;
@@ -60,6 +65,16 @@ public partial class OverlayWindow : Window
     private static extern int SetWindowLong(IntPtr hwnd, int index, int newStyle);
 
     [DllImport("user32.dll")]
+    private static extern bool SetWindowPos(
+        IntPtr hwnd,
+        IntPtr hwndInsertAfter,
+        int x,
+        int y,
+        int width,
+        int height,
+        uint flags);
+
+    [DllImport("user32.dll")]
     private static extern bool RegisterHotKey(IntPtr hWnd, int id, int fsModifiers, int vk);
 
     [DllImport("user32.dll")]
@@ -80,6 +95,7 @@ public partial class OverlayWindow : Window
     private ChatLogWatcher? _watcher;
     private HwndSource? _hwndSource;
     private System.Windows.Forms.NotifyIcon? _trayIcon;
+    private System.Windows.Forms.ToolStripMenuItem? _translationStatusItem;
     private HistoryWindow? _historyWindow;
     private HistoryPreferences _historyPreferences;
     private MessageBubble? _selectedMessage;
@@ -153,7 +169,9 @@ public partial class OverlayWindow : Window
         }
         InitializeTrayIcon();
 
-        _watcher = new ChatLogWatcher(_settings.CS2.LogPath, _parser, OnNewMessage);
+        var logPath = CS2LogPathResolver.Resolve(_settings.CS2.LogPath);
+        UpdateTranslationStatus(logPath);
+        _watcher = new ChatLogWatcher(logPath, _parser, OnNewMessage);
         _watcher.Start();
     }
 
@@ -210,6 +228,18 @@ public partial class OverlayWindow : Window
     private void InitializeTrayIcon()
     {
         var menu = new System.Windows.Forms.ContextMenuStrip();
+        _translationStatusItem = new System.Windows.Forms.ToolStripMenuItem("Translation: Starting...")
+        {
+            Enabled = false
+        };
+        menu.Items.Add(_translationStatusItem);
+        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
+        menu.Items.Add("Reply to Message", null, (_, _) =>
+            Dispatcher.BeginInvoke(() =>
+            {
+                if (!_replyMode)
+                    EnterReplyMode();
+            }));
         menu.Items.Add("Open Chat History", null, (_, _) =>
             Dispatcher.BeginInvoke(OpenHistoryWindow));
         menu.Items.Add("Settings", null, (_, _) =>
@@ -239,6 +269,25 @@ public partial class OverlayWindow : Window
             Visible = true
         };
         _trayIcon.DoubleClick += (_, _) => Dispatcher.BeginInvoke(OpenHistoryWindow);
+    }
+
+    private void UpdateTranslationStatus(string logPath)
+    {
+        var isReady = File.Exists(logPath);
+        if (_translationStatusItem != null)
+        {
+            _translationStatusItem.Text = isReady
+                ? "Translation: Watching CS2 chat"
+                : "Translation: console.log not found";
+        }
+
+        if (!isReady && _trayIcon != null)
+        {
+            _trayIcon.BalloonTipTitle = "CS2 Chat Translator";
+            _trayIcon.BalloonTipText =
+                "CS2 console.log was not found. Start CS2 with the -condebug launch option.";
+            _trayIcon.ShowBalloonTip(6000);
+        }
     }
 
     private async void OpenSettingsWindow()
@@ -442,7 +491,7 @@ public partial class OverlayWindow : Window
             bubble,
             timer);
 
-        bubble.MouseLeftButtonDown += (_, e) =>
+        container.MouseLeftButtonDown += (_, e) =>
         {
             if (!_replyMode)
                 return;
@@ -651,7 +700,7 @@ public partial class OverlayWindow : Window
         foreach (var message in _messages)
         {
             message.LifetimeTimer.Stop();
-            message.Bubble.Cursor = Cursors.Hand;
+            message.Container.Cursor = Cursors.Hand;
             ShowMessageInPanel(message);
         }
 
@@ -701,7 +750,7 @@ public partial class OverlayWindow : Window
 
         foreach (var message in _messages)
         {
-            message.Bubble.Cursor = Cursors.Arrow;
+            message.Container.Cursor = Cursors.Arrow;
             message.IsDisplayed = false;
             message.IsRemoving = false;
         }
@@ -1054,6 +1103,7 @@ public partial class OverlayWindow : Window
         var hwnd = new WindowInteropHelper(this).Handle;
         var style = GetWindowLong(hwnd, GWL_EXSTYLE);
         SetWindowLong(hwnd, GWL_EXSTYLE, style | WS_EX_TRANSPARENT | WS_EX_LAYERED);
+        RefreshWindowStyle(hwnd);
     }
 
     private void DisableClickThrough()
@@ -1061,6 +1111,19 @@ public partial class OverlayWindow : Window
         var hwnd = new WindowInteropHelper(this).Handle;
         var style = GetWindowLong(hwnd, GWL_EXSTYLE);
         SetWindowLong(hwnd, GWL_EXSTYLE, (style | WS_EX_LAYERED) & ~WS_EX_TRANSPARENT);
+        RefreshWindowStyle(hwnd);
+    }
+
+    private static void RefreshWindowStyle(IntPtr hwnd)
+    {
+        SetWindowPos(
+            hwnd,
+            IntPtr.Zero,
+            0,
+            0,
+            0,
+            0,
+            SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
     }
 
     private void LoadPosition()
